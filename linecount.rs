@@ -30,10 +30,20 @@ where
         let metadata = fs::metadata(path)?;
         if metadata.file_type().is_file() {
             if is_hidden(&path) == Some(false) {
-                dbg!(&path);
-                for _line in fs::read_to_string(path).unwrap().lines() {
+                let content = String::from_utf8_lossy(&fs::read(&path)?).into_owned();
+                for _ in content.lines() {
                     total_lines += 1;
                 }
+            }
+        } else if metadata.file_type().is_dir() {
+            if is_hidden(&path) == Some(false) {
+                let _linecount_result = linecount(Path::new(&path));
+                let _linecount = match _linecount_result {
+                    Ok(success) => success,
+                    Err(err) => panic!("shit!{err}"),
+                };
+
+                total_lines += _linecount;
             }
         };
     }
