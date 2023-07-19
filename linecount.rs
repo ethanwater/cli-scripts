@@ -5,6 +5,18 @@ use std::{
     process,
 };
 
+pub fn is_hidden<P>(file_path: P) -> Option<bool>
+where
+    P: AsRef<Path>,
+{
+    let filename = file_path.as_ref().file_name()?.to_str()?;
+    if filename.starts_with(".") {
+        return Some(true);
+    } else {
+        return Some(false);
+    }
+}
+
 pub fn linecount<P>(directory_path: P) -> io::Result<u128>
 where
     P: AsRef<Path>,
@@ -17,8 +29,11 @@ where
 
         let metadata = fs::metadata(path)?;
         if metadata.file_type().is_file() {
-            for _line in fs::read_to_string(path).unwrap().lines() {
-                total_lines += 1;
+            if is_hidden(&path) == Some(false) {
+                dbg!(&path);
+                for _line in fs::read_to_string(path).unwrap().lines() {
+                    total_lines += 1;
+                }
             }
         };
     }
