@@ -1,23 +1,28 @@
 use std::path::Path;
-use std::{
-    fs,
-    io::{self},
-    process,
-};
+use std::{fs, process};
 
-pub fn is_hidden<P>(file_path: P) -> Option<bool>
-where
-    P: AsRef<Path>,
-{
-    let filename = file_path.as_ref().file_name()?.to_str()?;
-    if filename.starts_with(".") {
-        return Some(true);
-    } else {
-        return Some(false);
+macro_rules! ternary {
+    ($test:expr => $true_expr:expr; $false_expr:expr) => {
+        if $test {
+            $true_expr
+        } else {
+            $false_expr
+        }
+    };
+}
+
+trait Visible {
+    fn is_visible(&self) -> Option<()>;
+}
+
+impl Visible for Path {
+    fn is_visible(&self) -> Option<()> {
+        let filename = self.file_name()?.to_str()?;
+        ternary!(filename.starts_with(".") => return None; return Some(()));
     }
 }
 
-pub fn linecount<P>(directory_path: P) -> io::Result<u128>
+fn linecount<P>(directory_path: P) -> std::io::Result<u128>
 where
     P: AsRef<Path>,
 {
@@ -26,37 +31,35 @@ where
     for entry in fs::read_dir(directory_path)? {
         let entry = entry?.path();
         let path = entry.as_path();
+        let metadata = fs::metadata(path)?.file_type();
 
-        let metadata = fs::metadata(path)?;
-        if metadata.file_type().is_file() {
-            if is_hidden(&path) == Some(false) {
-                let content = String::from_utf8_lossy(&fs::read(&path)?).into_owned();
-                for _ in content.lines() {
-                    total_lines += 1;
-                }
+        if metadata.is_file() && path.is_visible().is_some() {
+            let content = String::from_utf8_lossy(&fs::read(&path)?).into_owned();
+            for _ in content.lines() {
+                total_lines += 1;
             }
-        } else if metadata.file_type().is_dir() {
-            if is_hidden(&path) == Some(false) {
-                let _linecount_result = linecount(Path::new(&path));
-                let _linecount = match _linecount_result {
-                    Ok(success) => success,
-                    Err(err) => panic!("shit!{err}"),
-                };
-
-                total_lines += _linecount;
-            }
+        } else if metadata.is_dir() && path.is_visible().is_some() {
+            let _linecount_result = linecount(Path::new(&path));
+            let linecount = match _linecount_result {
+                Ok(success) => success,
+                Err(err) => panic!("shit!{err}"),
+            };
+            total_lines += linecount;
         };
     }
-
     Ok(total_lines)
 }
 
-fn main() -> io::Result<()> {
+fn fetch_directory() -> std::io::Result<String> {
     let output = process::Command::new("pwd").output()?;
     let mut current_dir = String::from_utf8_lossy(&output.stdout).into_owned();
     current_dir.pop();
 
-    let result = linecount(Path::new(&current_dir))?;
+    return Ok(current_dir);
+}
+
+fn main() -> std::io::Result<()> {
+    let result = linecount(Path::new(&fetch_directory().unwrap()))?;
     println!("linecount: {result}");
     Ok(())
 }
