@@ -6,3 +6,7 @@ lc () {
 	//linecount.rs
 	linecount
 }
+
+rustlib () {
+	open https://doc.rust-lang.org/std/
+}
